@@ -33,8 +33,8 @@ After the APK is installed, **HTML/JS updates ship over the air** — no reinsta
 | Plugin | `@capgo/capacitor-updater` |
 | Channel | `live` (pinned in `coach-native-bridge.js`) |
 | CI | `.github/workflows/capgo-ota.yml` on push to `main` |
-| Secret | `CAPGO_TOKEN` in repo Settings → Secrets → Actions |
-| Manual | `CAPGO_BUNDLE_VERSION=1.0.0 CAPGO_TOKEN=... npm run ship:capgo` |
+| Secret | `CAPGO_TOKEN` in repo Settings → Secrets and variables → Actions |
+| Manual | `CAPGO_BUNDLE_VERSION=1.0.0 CAPGO_TOKEN=$CAPGO_TOKEN npm run ship:capgo` (token from env/secret store, not chat) |
 
 Create the Capgo app with id **`com.hybrid.coach`** in the [Capgo dashboard](https://web.capgo.app/) before the first OTA upload.
 
@@ -70,6 +70,19 @@ python3 -m http.server 8777
 npm run sync:apk
 cd capacitor && npm install && npx cap sync android
 bash capacitor/scripts/build-dogfood-apk.sh   # needs ANDROID_HOME
+```
+
+## Secrets (do not paste tokens in chat)
+
+| Store | Secret | Used for |
+| --- | --- | --- |
+| [Cursor Cloud Agent Secrets](https://cursor.com/dashboard/cloud-agents/environments/e/2b5a4390-b0c9-11f1-a3d8-362438fd9788) | `GH_SIBLING_PUSH_TOKEN` | git push as your GitHub user (`scripts/setup-git-github-credentials.sh`) |
+| GitHub repo → Settings → Secrets → Actions | `CAPGO_TOKEN` | Capgo OTA workflow |
+
+Create a **new** GitHub fine-grained token (Contents: Read and write on this repo), paste it only into the Cursor Secrets field, then start a **new** Cloud Agent. Tokens already in chat logs should be revoked.
+
+```bash
+bash scripts/setup-git-github-credentials.sh
 ```
 
 ## Push from Brain monorepo

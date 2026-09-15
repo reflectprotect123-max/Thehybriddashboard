@@ -2,10 +2,19 @@
 
 ## 1. Push this tree to GitHub
 
-From the Adaptive Brain monorepo (or any machine with `GH_SIBLING_PUSH_TOKEN`):
+Do not paste GitHub tokens into chat, commits, or shell history.
+
+**Cloud Agents:** add `GH_SIBLING_PUSH_TOKEN` on the Cursor environment Secrets tab. New agents receive it as an environment variable. Then:
 
 ```bash
-export GH_SIBLING_PUSH_TOKEN=ghp_...
+bash scripts/setup-git-github-credentials.sh
+```
+
+That installs a git credential helper which reads the env var for `https://github.com` only.
+
+**Laptop / Brain monorepo:** store the same token in your OS keychain (`gh auth login`) or export `GH_SIBLING_PUSH_TOKEN` in a local secret manager — never in the repo.
+
+```bash
 ./scripts/push-coach-side-repo.sh
 ```
 
@@ -13,13 +22,13 @@ Target: **https://github.com/reflectprotect123-max/Thehybriddashboard** (`main`)
 
 ## 2. GitHub Actions secrets
 
-In **Thehybriddashboard → Settings → Secrets → Actions**:
+In **Thehybriddashboard → Settings → Secrets and variables → Actions**:
 
 | Secret | Purpose |
 | --- | --- |
 | `CAPGO_TOKEN` | Capgo API key for OTA uploads |
 
-Without `CAPGO_TOKEN`, the **Capgo OTA** workflow skips upload (APK workflow still runs).
+Without `CAPGO_TOKEN`, the **Capgo OTA** workflow skips upload (APK workflow still runs). GitHub Actions reads this from the repo secret store, not from Cursor chat.
 
 ## 3. Capgo dashboard
 
@@ -44,7 +53,7 @@ Manual ship:
 
 ```bash
 cd apps/coach-side   # or repo root on Thehybriddashboard
-CAPGO_BUNDLE_VERSION=1.0.0 CAPGO_TOKEN=... npm run ship:capgo
+CAPGO_BUNDLE_VERSION=1.0.0 npm run ship:capgo   # CAPGO_TOKEN from env or .capgo (gitignored)
 ```
 
 Open the installed APK → it pulls channel `live` on next launch.
