@@ -85,10 +85,6 @@ Create a **new** GitHub fine-grained token (Contents: Read and write on this rep
 bash scripts/setup-git-github-credentials.sh
 ```
 
-## Adaptive Brain layout (this overlay)
-
-Coach-side source is at the repo root. `apps/coach-side/` is the Brain mount path. Strength/Engine math lives in `packages/` plus `strength-sync.js`. Apply `supabase/migrations/` on project `orysjncrksmdfabpuftd` (SQL editor / CLI) so `assigned_session`, `working_max_event`, `pr_event`, and `engine_session` match what the apps write. Redeploy Netlify (`netlify.toml`) if you want WHOOP functions on a live hostname again.
-
 ## Push from Brain monorepo
 
 Brain snapshot lives at `apps/coach-side/` in the Adaptive Brain repo. Overlay to this repo:

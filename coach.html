@@ -482,9 +482,6 @@ label{display:block;margin:0 0 6px;color:var(--muted);font-size:10px;font-weight
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.js"></script>
 <script src="./coach-native-bridge.js"></script>
 <script src="./whoop.js"></script>
-<script src="./packages/hybrid-strength.js"></script>
-<script src="./packages/the-engine.js"></script>
-<script src="./strength-sync.js"></script>
 <script src="./coach-integrations.js"></script>
 <script src="./exercise-search-index.js"></script>
 <script src="./exercise-search.js"></script>
@@ -1956,9 +1953,6 @@ function coachChrome(body){
   const initials = String(S.coach?.name||'D').slice(0,1).toUpperCase();
   const hasRail = ui.view === 'home';
   const moreActions = `
-      <div class="card" style="margin-bottom:12px"><div class="eyebrow">Training system</div><div class="muted" style="margin:6px 0 10px">Default surface for this coach workspace.</div>
-      <button type="button" class="btn ${((S.settings&&S.settings.trainingSystem)!=='engine')?'primary':''}" onclick="setCoachTrainingSystem('strength')">Hybrid Strength</button>
-      <button type="button" class="btn ${((S.settings&&S.settings.trainingSystem)==='engine')?'primary':''}" onclick="setCoachTrainingSystem('engine')">The Engine</button></div>
       <button type="button" class="btn ${ui.view==='connections'?'primary':''}" onclick="go('connections');toggleCoachMore(false)">Connections</button>
       <button type="button" class="btn ${ui.view==='nutrition'?'primary':''}" onclick="go('nutrition');toggleCoachMore(false)">Nutrition</button>
       <button type="button" class="btn ${ui.view==='feed'?'primary':''}" onclick="go('feed');toggleCoachMore(false)">Activity log</button>
@@ -2108,14 +2102,6 @@ window.openCommentDrawer=openCommentDrawer; window.closeCommentDrawer=closeComme
 window.exportBridgeFile=exportBridgeFile;
 window.bindMyCloudIdToAthlete=bindMyCloudIdToAthlete;
 window.pushCloudNow=pushCloudNow;
-function setCoachTrainingSystem(mode){
-  S.settings = S.settings || {};
-  S.settings.trainingSystem = mode === 'engine' ? 'engine' : 'strength';
-  if (window.StrengthAdapter && StrengthAdapter.setTrainingSystem) StrengthAdapter.setTrainingSystem(S, S.settings.trainingSystem);
-  persist();
-  render();
-}
-window.setCoachTrainingSystem = setCoachTrainingSystem;
 window.toggleCoachMore=toggleCoachMore;
 window.refreshToday=refreshToday;
 window.saveProxyBase=saveProxyBase;

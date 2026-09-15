@@ -15,7 +15,6 @@
       if (!loc || !loc.hostname) return ATHLETE_NETLIFY;
       const host = String(loc.hostname).toLowerCase();
       if (host === 'thehybridsystem.netlify.app') return '';
-      if (host.endsWith('.netlify.app')) return '';
       if (loc.protocol === 'file:' || loc.protocol === 'capacitor:') return ATHLETE_NETLIFY;
       if (host === 'localhost' || host === '127.0.0.1') return ATHLETE_NETLIFY;
       if (host.endsWith('.github.io')) return ATHLETE_NETLIFY;

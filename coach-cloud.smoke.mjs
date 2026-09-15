@@ -7,9 +7,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const root = existsSync(join(dir, 'supabase/migrations/20260827_coach_publish_assigned_session.sql'))
-  ? dir
-  : join(dir, '../..');
+const root = join(dir, '../..');
 const mig = join(root, 'supabase/migrations/20260827_coach_publish_assigned_session.sql');
 if (!existsSync(mig)) throw new Error('missing coach publish migration');
 const sql = readFileSync(mig, 'utf8');
