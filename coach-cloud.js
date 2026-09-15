@@ -109,6 +109,54 @@
         };
   }
 
+  function isMissingColumn(err) {
+    const m = String((err && err.message) || err || '').toLowerCase();
+    return m.includes('column') || m.includes('schema cache') || m.includes('could not find');
+  }
+
+  function compactAssignedRow(row) {
+    return {
+      id: row.id,
+      athlete_id: row.athlete_id,
+      timezone: row.timezone,
+      coach_session_key: row.coach_session_key,
+      state: JSON.stringify({
+        delivery: row.state,
+        scheduled_date: row.scheduled_date,
+        published_at: row.published_at,
+        resolved_snapshot: row.resolved_snapshot,
+      }),
+    };
+  }
+
+  function parseAssignedState(state) {
+    if (state && typeof state === 'object' && !Array.isArray(state)) return state;
+    if (typeof state === 'string') {
+      const t = state.trim();
+      if (t.charAt(0) === '{') {
+        try {
+          return JSON.parse(t);
+        } catch (_) {}
+      }
+      return { delivery: t };
+    }
+    return { delivery: 'unpublished' };
+  }
+
+  function deliveryOf(row) {
+    if (!row) return '';
+    const packed = parseAssignedState(row.state);
+    if (packed.delivery || packed.status) return packed.delivery || packed.status;
+    if (row.resolved_snapshot || packed.resolved_snapshot || packed.htmlSession) return 'published';
+    return typeof row.state === 'string' ? row.state : '';
+  }
+
+  function snapshotOf(row) {
+    if (row && row.resolved_snapshot) return row.resolved_snapshot;
+    const packed = parseAssignedState(row && row.state);
+    return packed.resolved_snapshot || packed;
+  }
+
   async function upsertAssigned(row) {
     const sb = client();
     const existing = await sb
@@ -118,24 +166,41 @@
       .eq('coach_session_key', row.coach_session_key)
       .maybeSingle();
     if (existing.error) throw existing.error;
-    if (existing.data && existing.data.id) {
-      const patch = {
-        state: row.state,
-        scheduled_date: row.scheduled_date,
-        timezone: row.timezone,
-        coach_session_key: row.coach_session_key,
-      };
-      if (row.resolved_snapshot) {
-        patch.resolved_snapshot = row.resolved_snapshot;
-        patch.published_at = row.published_at;
+
+    async function write(payload, isUpdate, id) {
+      if (isUpdate) {
+        const upd = await sb.from('assigned_session').update(payload).eq('id', id);
+        if (upd.error) throw upd.error;
+        return id;
       }
-      const upd = await sb.from('assigned_session').update(patch).eq('id', existing.data.id);
-      if (upd.error) throw upd.error;
-      return existing.data.id;
+      const ins = await sb.from('assigned_session').insert(payload).select('id').single();
+      if (ins.error) throw ins.error;
+      return ins.data && ins.data.id;
     }
-    const ins = await sb.from('assigned_session').insert(row).select('id').single();
-    if (ins.error) throw ins.error;
-    return ins.data && ins.data.id;
+
+    const isUpdate = !!(existing.data && existing.data.id);
+    const id = isUpdate ? existing.data.id : row.id;
+    const full = {
+      state: row.state,
+      scheduled_date: row.scheduled_date,
+      timezone: row.timezone,
+      coach_session_key: row.coach_session_key,
+    };
+    if (!isUpdate) {
+      full.id = row.id;
+      full.athlete_id = row.athlete_id;
+      full.source_session_id = row.source_session_id;
+    }
+    if (row.resolved_snapshot) {
+      full.resolved_snapshot = row.resolved_snapshot;
+      full.published_at = row.published_at;
+    }
+    try {
+      return await write(full, isUpdate, id);
+    } catch (err) {
+      if (!isMissingColumn(err)) throw err;
+      return await write(compactAssignedRow(Object.assign({}, row, { id: id })), isUpdate, id);
+    }
   }
 
   async function pushPublished(state, opts) {
@@ -253,33 +318,35 @@
     if (!(await isSignedIn())) return { ok: false, reason: 'auth_required', merged: 0, withdrawn: 0 };
     const uid = await sessionUserId();
     const sb = client();
-    const res = await sb
+    let res = await sb
       .from('assigned_session')
       .select('id,scheduled_date,state,resolved_snapshot,coach_session_key,published_at')
-      .eq('athlete_id', uid)
-      .eq('state', 'published');
+      .eq('athlete_id', uid);
+    if (res.error && isMissingColumn(res.error)) {
+      res = await sb
+        .from('assigned_session')
+        .select('id,athlete_id,state,timezone,coach_session_key')
+        .eq('athlete_id', uid);
+    }
     if (res.error) throw res.error;
 
-    const unpub = await sb
-      .from('assigned_session')
-      .select('id,coach_session_key,state')
-      .eq('athlete_id', uid)
-      .eq('state', 'unpublished');
+    const publishedRows = (res.data || []).filter((row) => deliveryOf(row) === 'published');
+    const unpublishedRows = (res.data || []).filter((row) => deliveryOf(row) === 'unpublished');
 
     const Sync = typeof globalThis !== 'undefined' ? globalThis.CoachSync : null;
     let merged = 0;
     let withdrawn = 0;
     let nutritionApplied = false;
 
-    for (const row of res.data || []) {
-      const snap = row.resolved_snapshot || {};
+    for (const row of publishedRows) {
+      const snap = snapshotOf(row) || {};
       const incoming = snap.htmlSession;
       if (!incoming) continue;
       incoming.coachSessionId = incoming.coachSessionId || snap.coachSessionId || row.coach_session_key;
       incoming.cloudAssignedId = row.id;
       incoming.source = incoming.source || 'coach-bridge';
       incoming.coachWithdrawn = false;
-      if (row.scheduled_date) incoming.date = row.scheduled_date;
+      incoming.date = row.scheduled_date || parseAssignedState(row.state).scheduled_date || incoming.date;
       if (snap.nutrition && Sync && Sync.mergeNutritionFromSnapshot) {
         Sync.mergeNutritionFromSnapshot(snap.nutrition);
         nutritionApplied = true;
@@ -302,11 +369,9 @@
       }
     }
 
-    if (!unpub.error) {
-      for (const row of unpub.data || []) {
-        if (Sync && Sync.markWithdrawn) {
-          if (Sync.markWithdrawn(state, row.coach_session_key)) withdrawn++;
-        }
+    for (const row of unpublishedRows) {
+      if (Sync && Sync.markWithdrawn) {
+        if (Sync.markWithdrawn(state, row.coach_session_key)) withdrawn++;
       }
     }
 
@@ -315,7 +380,7 @@
       merged: merged,
       withdrawn: withdrawn,
       nutritionApplied: nutritionApplied,
-      rows: (res.data || []).length,
+      rows: publishedRows.length,
     };
   }
 

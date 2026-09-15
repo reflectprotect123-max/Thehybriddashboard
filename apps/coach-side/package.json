@@ -1,0 +1,6 @@
+{
+  "name": "@hybrid/coach-side",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Adaptive Brain coach-side overlay mount"
+}

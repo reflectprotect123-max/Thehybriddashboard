@@ -1,0 +1,10 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# WHOOP OAuth used to live on thehybridsystem.netlify.app (currently 404).
+# Redeploy this site in Netlify, then set WHOOP_* secrets. Until then the
+# athlete app still signs into live Supabase (orysjncrksmdfabpuftd).
