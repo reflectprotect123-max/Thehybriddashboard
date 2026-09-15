@@ -1,0 +1,60 @@
+name: Capgo OTA
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_version:
+        description: 'Semver bundle id (e.g. 1.0.3)'
+        required: false
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - 'coach.html'
+      - 'coach-*.js'
+      - 'exercise-search*.js'
+      - 'whoop.js'
+      - 'log-columns.js'
+      - 'scripts/sync-coach-apk.sh'
+      - 'capacitor/capacitor.config.json'
+      - '.github/workflows/capgo-ota.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ship-ota:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: capacitor/package-lock.json
+
+      - name: Resolve bundle version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ github.event.inputs.bundle_version }}" ]]; then
+            echo "bundle=${{ github.event.inputs.bundle_version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "bundle=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ship Capgo live bundle
+        env:
+          CAPGO_TOKEN: ${{ secrets.CAPGO_TOKEN }}
+          CAPGO_BUNDLE_VERSION: ${{ steps.ver.outputs.bundle }}
+          CAPGO_APP_ID: com.hybrid.coach
+          CAPGO_CHANNELS: live
+        run: |
+          set -euo pipefail
+          if [[ -z "${CAPGO_TOKEN:-}" ]]; then
+            echo "CAPGO_TOKEN secret not set — skipping OTA upload."
+            echo "Add CAPGO_TOKEN in repo Settings → Secrets → Actions, then re-run."
+            exit 0
+          fi
+          bash capacitor/scripts/ship-capgo.sh

@@ -1,0 +1,15 @@
+{
+  "name": "@hybrid/coach-side",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Hybrid Dashboard — Capacitor APK + Capgo OTA (Thehybriddashboard)",
+  "scripts": {
+    "test": "node coach-apk-shell.smoke.mjs && node coach-bridge.smoke.mjs && node coach-capgo.smoke.mjs && node coach-apk-ci.smoke.mjs && node coach-mobile.smoke.mjs && node coach-integrations.smoke.mjs && node health-proxy.smoke.mjs",
+    "proxy": "node health-proxy/server.mjs",
+    "sync:apk": "bash scripts/sync-coach-apk.sh",
+    "ship:capgo": "bash capacitor/scripts/ship-capgo.sh"
+  },
+  "dependencies": {
+    "puppeteer": "^24.43.1"
+  }
+}
